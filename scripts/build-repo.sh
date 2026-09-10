@@ -5,6 +5,9 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$repo_root"
 
+source "$script_dir/flatpak-builder.sh"
+flatpak_builder_init "$repo_root"
+
 repo_dir="${REPO_DIR:-repo}"
 build_root="${BUILD_ROOT:-build}"
 state_dir="${STATE_DIR:-.flatpak-builder}"
@@ -33,11 +36,13 @@ for manifest in "${manifests[@]}"; do
         --install-deps-from=flathub
         --repo="$repo_dir"
         --state-dir="$state_dir"
-        --user
     )
+    if [[ "$flatpak_builder_backend" == "native" ]]; then
+        args+=(--user)
+    fi
     if [[ -n "${GPG_KEY_ID:-}" ]]; then
         args+=(--gpg-sign="$GPG_KEY_ID")
     fi
 
-    flatpak-builder "${args[@]}" "$build_root/$app_id" "$manifest"
+    flatpak_builder_run "${args[@]}" "$build_root/$app_id" "$manifest"
 done

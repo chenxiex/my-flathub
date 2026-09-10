@@ -46,12 +46,15 @@ tests/
 
 ## 本地构建
 
-系统已安装 `flatpak-builder` 时运行：
+系统已安装 `flatpak-builder`，或已通过 Flatpak 安装 `org.flatpak.Builder` 时运行：
 
 ```console
 bash scripts/build-repo.sh
 bash tests/verify-repo.sh
 ```
+
+脚本优先使用原生 `flatpak-builder`；找不到时会自动通过
+`flatpak run org.flatpak.Builder` 调用 Flatpak 版本。
 
 也可以使用 Flathub 的 Builder Flatpak 构建单个应用：
 

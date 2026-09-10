@@ -5,7 +5,10 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$repo_root"
 
-for command in flatpak-builder jq xmllint; do
+source "$repo_root/scripts/flatpak-builder.sh"
+flatpak_builder_init "$repo_root"
+
+for command in jq xmllint; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "缺少必需命令：$command" >&2
         exit 1
@@ -33,7 +36,7 @@ for manifest in "${manifests[@]}"; do
     fi
 
     normalized="$tmp_dir/$package_name.json"
-    flatpak-builder --show-manifest "$manifest" >"$normalized"
+    flatpak_builder_run --show-manifest "$manifest" >"$normalized"
 
     app_id="$(jq -er '.["app-id"] // .id' "$normalized")"
     if [[ "$app_id" != "$package_name" ]]; then
