@@ -1,103 +1,103 @@
 name: 发布 Flatpak 仓库
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: flatpak-r2-production
-  cancel-in-progress: false
+    group: flatpak-r2-production
+    cancel-in-progress: false
 
 jobs:
-  publish:
-    name: 签名并发布 x86_64/stable
-    runs-on: ubuntu-24.04
-    environment: production
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:d6975c0cabef8467b1729461c8268ac336936671db30f3f825ba0ed4de6a5425
-      options: --privileged
-    env:
-      FLATPAK_ARCH: x86_64
-      FLATPAK_BRANCH: stable
-      FLATPAK_REPO_URL: ${{ vars.FLATPAK_REPO_URL }}
-      FLATPAK_REMOTE_NAME: ${{ vars.FLATPAK_REMOTE_NAME || 'my-flathub' }}
-      FLATPAK_REPO_TITLE: ${{ vars.FLATPAK_REPO_TITLE || 'My Flathub' }}
-      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
-      R2_BUCKET: ${{ vars.R2_BUCKET }}
-    steps:
-      - name: 检出仓库
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
-
-      - name: 安装发布工具
-        shell: bash
-        run: |
-          if ! command -v rclone >/dev/null 2>&1; then
-            rclone_version=1.75.1
-            archive="$RUNNER_TEMP/rclone.zip"
-            curl --fail --silent --show-error --location \
-              "https://downloads.rclone.org/v${rclone_version}/rclone-v${rclone_version}-linux-amd64.zip" \
-              --output "$archive"
-            printf '%s  %s\n' \
-              '982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab' \
-              "$archive" | sha256sum --check --status
-            unzip -q "$archive" -d "$RUNNER_TEMP"
-            install -d "$RUNNER_TEMP/bin"
-            install -m 755 \
-              "$RUNNER_TEMP/rclone-v${rclone_version}-linux-amd64/rclone" \
-              "$RUNNER_TEMP/bin/rclone"
-            printf '%s\n' "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-          fi
-
-      - name: 缓存 Flatpak Builder 状态
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # 固定为 v4 对应提交
-        with:
-          path: .flatpak-builder
-          key: flatpak-builder-25.08-x86_64-${{ hashFiles('packages/**') }}
-          restore-keys: |
-            flatpak-builder-25.08-x86_64-
-
-      - name: 导入发布密钥
-        shell: bash
+    publish:
+        name: 签名并发布 x86_64/stable
+        runs-on: ubuntu-24.04
+        environment: production
+        container:
+            image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:d6975c0cabef8467b1729461c8268ac336936671db30f3f825ba0ed4de6a5425
+            options: --privileged
         env:
-          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
-        run: |
-          gpg_dir="$RUNNER_TEMP/flatpak-gnupg"
-          install -d -m 700 "$gpg_dir"
-          printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | GNUPGHOME="$gpg_dir" gpg --batch --import
-          key_id="$(GNUPGHOME="$gpg_dir" gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
-          test -n "$key_id"
-          GNUPGHOME="$gpg_dir" gpg --batch --export "$key_id" > public-key.gpg
-          printf 'GNUPGHOME=%s\n' "$gpg_dir" >> "$GITHUB_ENV"
-          printf 'GPG_KEY_ID=%s\n' "$key_id" >> "$GITHUB_ENV"
-          printf 'FLATPAK_GPG_PUBLIC_KEY_FILE=%s/public-key.gpg\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+            FLATPAK_ARCH: x86_64
+            FLATPAK_BRANCH: stable
+            FLATPAK_REPO_URL: ${{ vars.FLATPAK_REPO_URL }}
+            FLATPAK_REMOTE_NAME: ${{ vars.FLATPAK_REMOTE_NAME || 'my-flathub' }}
+            FLATPAK_REPO_TITLE: ${{ vars.FLATPAK_REPO_TITLE || 'My Flathub' }}
+            R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+            R2_BUCKET: ${{ vars.R2_BUCKET }}
+        steps:
+            - name: 检出仓库
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
-      - name: 从 R2 恢复当前仓库
-        env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: bash scripts/r2-repo.sh pull
+            - name: 安装发布工具
+              shell: bash
+              run: |
+                  if ! command -v rclone >/dev/null 2>&1; then
+                      rclone_version=1.75.1
+                      archive="$RUNNER_TEMP/rclone.zip"
+                      curl --fail --silent --show-error --location \
+                          "https://downloads.rclone.org/v${rclone_version}/rclone-v${rclone_version}-linux-amd64.zip" \
+                          --output "$archive"
+                      printf '%s  %s\n' \
+                          '982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab' \
+                          "$archive" | sha256sum --check --status
+                      unzip -q "$archive" -d "$RUNNER_TEMP"
+                      install -d "$RUNNER_TEMP/bin"
+                      install -m 755 \
+                          "$RUNNER_TEMP/rclone-v${rclone_version}-linux-amd64/rclone" \
+                          "$RUNNER_TEMP/bin/rclone"
+                      printf '%s\n' "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+                  fi
 
-      - name: 构建并签名全部软件包
-        run: bash scripts/build-repo.sh
+            - name: 缓存 Flatpak Builder 状态
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # 固定为 v4 对应提交
+              with:
+                  path: .flatpak-builder
+                  key: flatpak-builder-25.08-x86_64-${{ hashFiles('packages/**') }}
+                  restore-keys: |
+                      flatpak-builder-25.08-x86_64-
 
-      - name: 生成已签名的仓库元数据
-        run: |
-          bash scripts/finalize-repo.sh
-          bash scripts/generate-flatpakrepo.sh
+            - name: 导入发布密钥
+              shell: bash
+              env:
+                  FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+              run: |
+                  gpg_dir="$RUNNER_TEMP/flatpak-gnupg"
+                  install -d -m 700 "$gpg_dir"
+                  printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | GNUPGHOME="$gpg_dir" gpg --batch --import
+                  key_id="$(GNUPGHOME="$gpg_dir" gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
+                  test -n "$key_id"
+                  GNUPGHOME="$gpg_dir" gpg --batch --export "$key_id" > public-key.gpg
+                  printf 'GNUPGHOME=%s\n' "$gpg_dir" >> "$GITHUB_ENV"
+                  printf 'GPG_KEY_ID=%s\n' "$key_id" >> "$GITHUB_ENV"
+                  printf 'FLATPAK_GPG_PUBLIC_KEY_FILE=%s/public-key.gpg\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
 
-      - name: 验证已签名的仓库
-        run: bash tests/verify-repo.sh
+            - name: 从 R2 恢复当前仓库
+              env:
+                  R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+                  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+              run: bash scripts/r2-repo.sh pull
 
-      - name: 将仓库发布到 R2
-        env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: bash scripts/r2-repo.sh push
+            - name: 构建并签名全部软件包
+              run: bash scripts/build-repo.sh
 
-      - name: 探测公开仓库
-        run: bash tests/probe-public-repo.sh
+            - name: 生成已签名的仓库元数据
+              run: |
+                  bash scripts/finalize-repo.sh
+                  bash scripts/generate-flatpakrepo.sh
+
+            - name: 验证已签名的仓库
+              run: bash tests/verify-repo.sh
+
+            - name: 将仓库发布到 R2
+              env:
+                  R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+                  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+              run: bash scripts/r2-repo.sh push
+
+            - name: 探测公开仓库
+              run: bash tests/probe-public-repo.sh

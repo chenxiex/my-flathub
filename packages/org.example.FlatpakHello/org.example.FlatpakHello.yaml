@@ -5,16 +5,16 @@ sdk: org.freedesktop.Sdk
 command: flatpak-hello
 # 保持应用无额外权限，同时让导出的 metadata 明确记录最低 Flatpak 版本。
 finish-args:
-  - --require-version=1.0.0
+    - --require-version=1.0.0
 
 modules:
-  - name: flatpak-hello
-    buildsystem: simple
-    build-commands:
-      - install -Dm755 flatpak-hello.sh /app/bin/flatpak-hello
-      - install -Dm644 org.example.FlatpakHello.metainfo.xml /app/share/metainfo/org.example.FlatpakHello.metainfo.xml
-    sources:
-      - type: file
-        path: flatpak-hello.sh
-      - type: file
-        path: org.example.FlatpakHello.metainfo.xml
+    - name: flatpak-hello
+      buildsystem: simple
+      build-commands:
+          - install -Dm755 flatpak-hello.sh /app/bin/flatpak-hello
+          - install -Dm644 org.example.FlatpakHello.metainfo.xml /app/share/metainfo/org.example.FlatpakHello.metainfo.xml
+      sources:
+          - type: file
+            path: flatpak-hello.sh
+          - type: file
+            path: org.example.FlatpakHello.metainfo.xml

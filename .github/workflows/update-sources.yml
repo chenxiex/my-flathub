@@ -1,52 +1,52 @@
 name: 检查 Flatpak 源码更新
 
 on:
-  schedule:
-    - cron: '17 3 * * *'
-  workflow_dispatch:
+    schedule:
+        - cron: '17 3 * * *'
+    workflow_dispatch:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  discover:
-    name: 发现 manifest
-    runs-on: ubuntu-24.04
-    outputs:
-      manifests: ${{ steps.manifests.outputs.manifests }}
-    steps:
-      - name: 检出仓库
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+    discover:
+        name: 发现 manifest
+        runs-on: ubuntu-24.04
+        outputs:
+            manifests: ${{ steps.manifests.outputs.manifests }}
+        steps:
+            - name: 检出仓库
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
-      - name: 生成 manifest 矩阵
-        id: manifests
-        shell: bash
-        run: |
-          manifests="$(bash scripts/discover-manifests.sh | jq --raw-input --slurp --compact-output 'split("\n") | map(select(length > 0))')"
-          printf 'manifests=%s\n' "$manifests" >> "$GITHUB_OUTPUT"
+            - name: 生成 manifest 矩阵
+              id: manifests
+              shell: bash
+              run: |
+                  manifests="$(bash scripts/discover-manifests.sh | jq --raw-input --slurp --compact-output 'split("\n") | map(select(length > 0))')"
+                  printf 'manifests=%s\n' "$manifests" >> "$GITHUB_OUTPUT"
 
-  update:
-    name: 检查 ${{ matrix.manifest }}
-    needs: discover
-    if: ${{ needs.discover.outputs.manifests != '[]' }}
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        manifest: ${{ fromJSON(needs.discover.outputs.manifests) }}
-    steps:
-      - name: 使用更新令牌检出仓库
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
-        with:
-          token: ${{ secrets.FLATPAK_UPDATE_TOKEN }}
+    update:
+        name: 检查 ${{ matrix.manifest }}
+        needs: discover
+        if: ${{ needs.discover.outputs.manifests != '[]' }}
+        runs-on: ubuntu-24.04
+        strategy:
+            fail-fast: false
+            matrix:
+                manifest: ${{ fromJSON(needs.discover.outputs.manifests) }}
+        steps:
+            - name: 使用更新令牌检出仓库
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+              with:
+                  token: ${{ secrets.FLATPAK_UPDATE_TOKEN }}
 
-      - name: 检查并提议源码更新
-        uses: docker://ghcr.io/flathub/flatpak-external-data-checker@sha256:58cbad601261c2ebaae2e18b6f639c09aa5809ef941dcff7284f68928ebb790d
-        env:
-          GIT_AUTHOR_NAME: Flatpak Update Bot
-          GIT_COMMITTER_NAME: Flatpak Update Bot
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GITHUB_TOKEN: ${{ secrets.FLATPAK_UPDATE_TOKEN }}
-        with:
-          args: --update --never-fork ${{ matrix.manifest }}
+            - name: 检查并提议源码更新
+              uses: docker://ghcr.io/flathub/flatpak-external-data-checker@sha256:58cbad601261c2ebaae2e18b6f639c09aa5809ef941dcff7284f68928ebb790d
+              env:
+                  GIT_AUTHOR_NAME: Flatpak Update Bot
+                  GIT_COMMITTER_NAME: Flatpak Update Bot
+                  GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+                  GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+                  GITHUB_TOKEN: ${{ secrets.FLATPAK_UPDATE_TOKEN }}
+              with:
+                  args: --update --never-fork ${{ matrix.manifest }}

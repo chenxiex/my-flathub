@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="console-application">
-  <id>org.example.FlatpakHello</id>
-  <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
-  <name>Flatpak 问候程序</name>
-  <summary>验证 My Flathub 的构建与发布流水线</summary>
-  <description>
-    <p>
-      一个最小的命令行应用程序，用于测试此 Flatpak 仓库完整的构建、签名、安装和更新流程。
-    </p>
-  </description>
-  <url type="homepage">https://github.com/chenxiex</url>
-  <developer id="org.example">
-    <name>My Flathub 贡献者</name>
-  </developer>
-  <provides>
-    <binary>flatpak-hello</binary>
-  </provides>
-  <releases>
-    <release version="1.0.0" date="2026-09-10"/>
-  </releases>
-  <content_rating type="oars-1.1"/>
+    <id>org.example.FlatpakHello</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>MIT</project_license>
+    <name>Flatpak 问候程序</name>
+    <summary>验证 My Flathub 的构建与发布流水线</summary>
+    <description>
+        <p>
+            一个最小的命令行应用程序，用于测试此 Flatpak 仓库完整的构建、签名、安装和更新流程。
+        </p>
+    </description>
+    <url type="homepage">https://github.com/chenxiex</url>
+    <developer id="org.example">
+        <name>My Flathub 贡献者</name>
+    </developer>
+    <provides>
+        <binary>flatpak-hello</binary>
+    </provides>
+    <releases>
+        <release version="1.0.0" date="2026-09-10"/>
+    </releases>
+    <content_rating type="oars-1.1"/>
 </component>
