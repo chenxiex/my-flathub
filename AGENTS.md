@@ -8,7 +8,7 @@
 
 ## 构建与验证
 
-- 修改 manifest 或打包资源后，运行 `bash scripts/validate-manifests.sh`。
-- 修改构建、仓库生成或发布逻辑后，运行 `bash scripts/build-repo.sh` 和 `bash scripts/verify-repo.sh`。
+- 修改 manifest 或打包资源后，运行 `bash tests/validate-manifests.sh`。
+- 修改构建、仓库生成或发布逻辑后，运行 `bash scripts/build-repo.sh` 和 `bash tests/verify-repo.sh`。
 - 修改 GitHub Actions 工作流后，使用 `actionlint` 验证工作流语法。
 - 不得因为沙箱限制而跳过必要的测试、冒烟测试、设备探测、依赖安装或其他验证。

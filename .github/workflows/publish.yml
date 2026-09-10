@@ -91,7 +91,7 @@ jobs:
           bash scripts/generate-flatpakrepo.sh
 
       - name: 验证已签名的仓库
-        run: bash scripts/verify-repo.sh
+        run: bash tests/verify-repo.sh
 
       - name: 将仓库发布到 R2
         env:
@@ -100,4 +100,4 @@ jobs:
         run: bash scripts/r2-repo.sh push
 
       - name: 探测公开仓库
-        run: bash scripts/probe-public-repo.sh
+        run: bash tests/probe-public-repo.sh

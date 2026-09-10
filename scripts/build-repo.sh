@@ -12,7 +12,7 @@ arch="${FLATPAK_ARCH:-x86_64}"
 branch="${FLATPAK_BRANCH:-stable}"
 runtime_repo="${FLATPAK_RUNTIME_REPO:-https://dl.flathub.org/repo/flathub.flatpakrepo}"
 
-"$script_dir/validate-manifests.sh"
+"$repo_root/tests/validate-manifests.sh"
 mkdir -p -- "$repo_dir" "$build_root" "$state_dir"
 
 if [[ ! -f "$repo_dir/config" ]]; then

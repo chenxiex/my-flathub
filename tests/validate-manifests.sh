@@ -12,7 +12,7 @@ for command in flatpak-builder jq xmllint; do
   fi
 done
 
-mapfile -t manifests < <("$script_dir/discover-manifests.sh")
+mapfile -t manifests < <("$repo_root/scripts/discover-manifests.sh")
 if (( ${#manifests[@]} == 0 )); then
   echo "packages/ 下未发现 Flatpak manifest" >&2
   exit 1

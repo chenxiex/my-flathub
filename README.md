@@ -15,6 +15,12 @@ packages/
     flatpak-hello.sh
 scripts/
   build-repo.sh
+  discover-manifests.sh
+  finalize-repo.sh
+  generate-flatpakrepo.sh
+  r2-repo.sh
+tests/
+  probe-public-repo.sh
   validate-manifests.sh
   verify-repo.sh
 ```
@@ -31,7 +37,7 @@ commit，不能追踪 branch。需要自动更新的源应添加标准 `x-checke
 
 ```console
 bash scripts/build-repo.sh
-bash scripts/verify-repo.sh
+bash tests/verify-repo.sh
 ```
 
 也可以使用 Flathub 的 Builder Flatpak：
