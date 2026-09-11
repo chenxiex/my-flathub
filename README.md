@@ -3,7 +3,18 @@
 这是一个通过 GitHub Actions 构建、签名并发布到 Cloudflare R2 的 Flatpak
 monorepo。首版发布 `x86_64/stable`，R2 bucket 的根目录就是 OSTree repository。
 
-## GPG 发布密钥
+## 添加和使用源
+
+```console
+flatpak remote-add --if-not-exists anlor \
+  https://flatpak.anlor.top/repo.flatpakrepo
+flatpak remote-ls anlor
+flatpak install anlor org.example.FlatpakHello
+```
+
+## 运维
+
+### GPG 发布密钥
 
 建议生成只用于本源、没有口令的独立密钥。密钥泄露时应立即停止发布、轮换密钥并
 向所有用户重新分发 `.flatpakrepo`；已安装 remote 的信任密钥不会自动替换。
@@ -20,9 +31,9 @@ gpg --export "My Flathub Release" > public-key.gpg
 
 将 `private.asc` 的完整内容保存为 GitHub `production` environment secret
 `FLATPAK_GPG_PRIVATE_KEY`，不要提交私钥。公钥会在发布时由私钥导出并嵌入
-`my-flathub.flatpakrepo`。
+`repo.flatpakrepo`。
 
-## GitHub 配置
+### GitHub 配置
 
 创建名为 `production` 的 Environment，并限制只能由 `main` 分支部署。
 
@@ -53,7 +64,7 @@ Workflows 或 Administration 权限。设置到期日和轮换提醒。
 external-data-checker 每日 03:17 UTC 为每个有更新的应用创建 PR；PAT 创建的 PR 会
 走与人工 PR 相同的常规 CI，但不会自动合并。
 
-## Cloudflare R2 配置
+### Cloudflare R2 配置
 
 1. 创建一个只存放此 Flatpak repo 的专用 bucket。发布使用严格镜像，bucket 中的
    任何额外对象都可能被删除。
@@ -63,12 +74,12 @@ external-data-checker 每日 03:17 UTC 为每个有更新的应用创建 PR；PA
    - `/objects/*` 和 `/deltas/*`：Cache Everything，Edge TTL 一年；对象以
      `Cache-Control: public, max-age=31536000, immutable` 上传。
    - 其他路径：Bypass cache，尤其是 `summary`、`summary.sig`、`refs/*`、
-     `config`、AppStream 和 `my-flathub.flatpakrepo`。
+     `config`、AppStream 和 `repo.flatpakrepo`。
 
 Flatpak CLI 不需要浏览器 CORS。发布脚本使用 R2 S3 endpoint
 `https://<account-id>.r2.cloudflarestorage.com`，因此不需要 `wrangler.toml`。
 
-## 发布过程
+### 发布过程
 
 PR 只构建和验证，不接触发布 Secrets。合并到 `main` 或手动运行“发布 Flatpak 仓库”工作流
 后，工作流会：
@@ -85,17 +96,3 @@ workflow 使用 concurrency 锁，两个发布不会同时写 bucket。更新可
 对象之间仍存在很小的客户端竞态窗口；当前通过保留上一版本、最后删除及禁用可变
 元数据缓存来降低风险。
 
-## 添加和使用源
-
-发布成功后，用户运行：
-
-```console
-flatpak remote-add --if-not-exists my-flathub \
-  https://flatpak.example.com/my-flathub.flatpakrepo
-flatpak remote-ls my-flathub
-flatpak install my-flathub org.example.FlatpakHello
-```
-
-如果发布失败，先查看失败发生在上传前还是上传后。上传前失败不会改变 R2；上传后
-失败时重新运行“发布 Flatpak 仓库”工作流，它会先恢复当前远端状态并重新生成一致的 summary。
-不要手工删除 `objects/` 或 `deltas/` 中的对象。

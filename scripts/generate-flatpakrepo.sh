@@ -32,4 +32,4 @@ mkdir -p -- "$repo_dir"
     printf '%s\n' 'Comment=由 My Flathub 发布的应用程序'
     printf '%s\n' 'Description=由 My Flathub monorepo 构建并发布的应用程序'
     printf 'GPGKey=%s\n' "$gpg_key"
-} >"$repo_dir/my-flathub.flatpakrepo"
+} >"$repo_dir/repo.flatpakrepo"

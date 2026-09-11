@@ -10,12 +10,12 @@ if [[ -z "$repo_url" || "$repo_url" != https://*/ ]]; then
 fi
 
 curl --fail --silent --show-error --retry 5 --retry-all-errors \
-    --output /dev/null "${repo_url}my-flathub.flatpakrepo"
+    --output /dev/null "${repo_url}repo.flatpakrepo"
 curl --fail --silent --show-error --retry 5 --retry-all-errors \
     --output /dev/null "${repo_url}summary"
 
 test_root="$(mktemp -d)"
 trap 'rm -rf -- "$test_root"' EXIT
 env XDG_DATA_HOME="$test_root/data" flatpak remote-add --user --if-not-exists \
-    "$remote_name" "${repo_url}my-flathub.flatpakrepo"
+    "$remote_name" "${repo_url}repo.flatpakrepo"
 env XDG_DATA_HOME="$test_root/data" flatpak remote-ls --user "$remote_name"
