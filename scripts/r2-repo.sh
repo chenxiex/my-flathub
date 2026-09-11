@@ -30,6 +30,10 @@ case "$operation" in
         pull)
                 mkdir -p -- "$repo_dir"
                 rclone copy "$remote" "$repo_dir" --fast-list "${common_filters[@]}"
+                if [[ -f "$repo_dir/config" ]]; then
+                        # R2 不保存空目录，恢复已有 OSTree 仓库时需要重建其目录结构。
+                        mkdir -p -- "$repo_dir/refs/remotes" "$repo_dir/refs/mirrors"
+                fi
                 ;;
         push)
                 if [[ ! -f "$repo_dir/config" || ! -f "$repo_dir/summary" || ! -f "$repo_dir/summary.sig" ]]; then
