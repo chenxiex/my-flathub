@@ -9,10 +9,14 @@ monorepo。首版发布 `x86_64/stable`，R2 bucket 的根目录就是 OSTree re
 向所有用户重新分发 `.flatpakrepo`；已安装 remote 的信任密钥不会自动替换。
 
 ```console
-gpg --batch --quick-generate-key "My Flathub Release <flatpak@example.com>" ed25519 sign 2y
+gpg --batch --pinentry-mode loopback --passphrase '' \
+  --quick-generate-key "My Flathub Release <flatpak@example.com>" ed25519 sign 2y
 gpg --armor --export-secret-keys "My Flathub Release" > private.asc
 gpg --export "My Flathub Release" > public-key.gpg
 ```
+
+`--passphrase ''` 会生成无口令密钥，使 GitHub Actions 能在没有 `pinentry` 的
+非交互环境中完成签名。请仅将该密钥用于此仓库的发布，并严格保护对应的 Secret。
 
 将 `private.asc` 的完整内容保存为 GitHub `production` environment secret
 `FLATPAK_GPG_PRIVATE_KEY`，不要提交私钥。公钥会在发布时由私钥导出并嵌入
