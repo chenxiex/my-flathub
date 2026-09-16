@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+cd "$repo_root"
+
+source "$repo_root/scripts/flatpak-builder.sh"
+flatpak_builder_init "$repo_root"
+flatpak_builder_lint_init "$repo_root"
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "缺少必需命令：jq" >&2
+    exit 1
+fi
+
 repo_dir="${REPO_DIR:-repo}"
 arch="${FLATPAK_ARCH:-x86_64}"
 branch="${FLATPAK_BRANCH:-stable}"
@@ -12,9 +25,19 @@ if [[ ! -f "$repo_dir/config" ]]; then
 fi
 
 ostree fsck --repo="$repo_dir"
-if command -v flatpak-builder-lint >/dev/null 2>&1; then
-    flatpak-builder-lint --gha-format repo "$repo_dir"
+
+# 多应用仓库必须逐个指定 ref，linter 才能按应用 ID 匹配本地例外。
+mapfile -t manifests < <("$repo_root/scripts/discover-manifests.sh")
+if (( ${#manifests[@]} == 0 )); then
+    echo "packages/ 下未发现 Flatpak manifest" >&2
+    exit 1
 fi
+for manifest in "${manifests[@]}"; do
+    app_id="$(basename -- "$(dirname -- "$manifest")")"
+    flatpak_builder_lint_run_for_app "$repo_root" "$app_id" \
+        --ref "app/$app_id/$arch/$branch" \
+        --gha-format repo "$repo_dir"
+done
 
 repo_abs="$(cd -- "$repo_dir" && pwd)"
 test_root="$(mktemp -d)"
