@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>io.github._2dust.v2rayN</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0-only</project_license>
+    <name>v2rayN</name>
+    <summary>非官方 Flatpak 打包的图形代理客户端</summary>
+    <description>
+        <p>重打包上游 Linux 便携版，提供 Xray、sing-box 和 mihomo 普通代理模式。</p>
+        <p>本版本不支持 TUN；系统代理设置仅针对 GNOME 和 KDE，且需要授予宿主命令执行权限。</p>
+    </description>
+    <url type="homepage">https://github.com/2dust/v2rayN</url>
+    <url type="bugtracker">https://github.com/2dust/v2rayN/issues</url>
+    <launchable type="desktop-id">io.github._2dust.v2rayN.desktop</launchable>
+    <developer id="io.github._2dust">
+        <name>2dust</name>
+    </developer>
+    <releases>
+        <release version="7.24.9" date="2026-08-29"/>
+    </releases>
+    <content_rating type="oars-1.1"/>
+</component>

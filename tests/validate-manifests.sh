@@ -7,6 +7,7 @@ cd "$repo_root"
 
 source "$repo_root/scripts/flatpak-builder.sh"
 flatpak_builder_init "$repo_root"
+flatpak_builder_lint_init "$repo_root"
 
 for command in jq xmllint; do
     if ! command -v "$command" >/dev/null 2>&1; then
@@ -93,12 +94,9 @@ for manifest in "${manifests[@]}"; do
         exit 1
     fi
 
-    if command -v flatpak-builder-lint >/dev/null 2>&1; then
-        flatpak-builder-lint --gha-format manifest "$manifest"
-        flatpak-builder-lint --gha-format appstream "$metainfo"
-    else
-        echo "警告：flatpak-builder-lint 不可用，已跳过 $manifest" >&2
-    fi
+    flatpak_builder_lint_run_for_app "$repo_root" "$app_id" \
+        --gha-format manifest "$manifest"
+    flatpak_builder_lint_run --gha-format appstream "$metainfo"
 done
 
 printf '已验证 %d 个 Flatpak manifest。\n' "${#manifests[@]}"

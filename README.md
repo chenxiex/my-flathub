@@ -12,6 +12,11 @@ flatpak remote-ls anlor
 flatpak install anlor org.example.FlatpakHello
 ```
 
+## 软件包列表
+
+- [org.example.FlatpakHello](packages/org.example.FlatpakHello/README.md)
+- [io.github._2dust.v2rayN](packages/io.github._2dust.v2rayN/README.md)
+
 ## 运维
 
 ### GPG 发布密钥
@@ -95,4 +100,3 @@ PR 只构建和验证，不接触发布 Secrets。合并到 `main` 或手动运�
 workflow 使用 concurrency 锁，两个发布不会同时写 bucket。更新可变元数据与删除旧
 对象之间仍存在很小的客户端竞态窗口；当前通过保留上一版本、最后删除及禁用可变
 元数据缓存来降低风险。
-

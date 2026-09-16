@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=v2rayN
+Comment=非官方 Flatpak 打包的代理客户端
+Exec=v2rayn-flatpak
+Icon=io.github._2dust.v2rayN
+Terminal=false
+Categories=Network;
