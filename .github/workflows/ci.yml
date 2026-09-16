@@ -8,15 +8,41 @@ permissions:
     contents: read
 
 jobs:
+    worker:
+        name: 检查 TypeScript 预览入口
+        runs-on: ubuntu-24.04
+        steps:
+            - name: 检出仓库
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+
+            - name: 安装 Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # 固定为 v4.4.0 对应提交
+              with:
+                  node-version: '24'
+                  cache: npm
+                  cache-dependency-path: workers/package-lock.json
+
+            - name: 安装 Worker 开发依赖
+              run: npm ci --prefix workers
+
+            - name: 检查类型、运行测试并验证构建
+              run: |
+                  export XDG_CONFIG_HOME="$RUNNER_TEMP/my-flathub-worker/config"
+                  export WRANGLER_LOG_PATH="$RUNNER_TEMP/my-flathub-worker/wrangler/logs"
+                  npm run typecheck --prefix workers
+                  npm test --prefix workers
+                  npm run build --prefix workers
+                  python3 -m unittest discover -s tests -p 'test_*.py' -v
+
     build:
-        name: 构建并验证 x86_64/stable
+        name: 构建并验证 x86_64
         runs-on: ubuntu-24.04
         container:
             image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:d6975c0cabef8467b1729461c8268ac336936671db30f3f825ba0ed4de6a5425
             options: --privileged
         env:
             FLATPAK_ARCH: x86_64
-            FLATPAK_BRANCH: stable
+            FLATPAK_BRANCH: ${{ github.event_name == 'pull_request' && 'test' || 'stable' }}
         steps:
             - name: 检出仓库
               uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
@@ -34,3 +60,37 @@ jobs:
 
             - name: 验证仓库并对示例执行冒烟测试
               run: bash tests/verify-repo.sh
+
+            - name: 签署 PR 预览仓库
+              if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
+              shell: bash
+              env:
+                  PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_BASE_URL }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              run: bash scripts/prepare-preview-repo.sh
+
+            - name: 验证已签名的预览仓库
+              if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
+              env:
+                  FLATPAK_GPG_PUBLIC_KEY_FILE: ${{ runner.temp }}/preview-public.gpg
+              run: bash tests/verify-repo.sh
+
+            - name: 暂存预览仓库供隔离发布流程使用
+              if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 固定为 v4.6.2
+              with:
+                  name: pr-preview-repo-${{ github.run_attempt }}
+                  path: |
+                      repo/
+                      preview.json
+                      !repo/.lock
+                      !repo/state/**
+                      !repo/tmp/**
+                      !repo/uncompressed-objects-cache/**
+                  retention-days: 1
+                  if-no-files-found: error
+
+            - name: 提示尚未配置预览入口
+              if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL == ''
+              run: echo '::warning::PR_PREVIEW_BASE_URL 未设置；PR 仓库发布会在配置 Worker 后启用'

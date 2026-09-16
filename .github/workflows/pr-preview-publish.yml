@@ -1,0 +1,34 @@
+name: 发布 PR 测试仓库
+
+on:
+    workflow_run:
+        workflows:
+            - Flatpak 持续集成
+        types:
+            - completed
+
+permissions:
+    actions: write
+    contents: write
+    pull-requests: write
+
+jobs:
+    publish:
+        name: 隔离发布已验证的仓库
+        if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
+        runs-on: ubuntu-24.04
+        concurrency:
+            group: pr-preview-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+            cancel-in-progress: false
+        steps:
+            - name: 检出默认分支的发布代码
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+              with:
+                  ref: main
+                  persist-credentials: false
+
+            - name: 发布仓库并更新 PR 安装说明
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_BASE_URL }}
+              run: python3 scripts/pr-preview-release.py publish
