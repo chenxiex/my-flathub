@@ -9,8 +9,7 @@
 
 此外，`org.freedesktop.Flatpak` 允许应用通过 `flatpak-spawn --host` 执行宿主命令，显著降低沙箱隔离性；仅在接受这一风险的机器上安装。包内将上游系统代理脚本调用的 `gsettings`、`kwriteconfig5/6` 和 `dbus-send` 转发到宿主。GNOME/KDE 的设置与清除功能仍需在真实桌面环境中验收，不能仅凭构建成功视为可用。
 
-若相关宿主命令不可用、运行失败或代理无法正常工作，请先在桌面系统设置中关闭代理。
-GNOME 可执行 `gsettings set org.gnome.system.proxy mode 'none'`；KDE 可在系统设置的“代理”页面选择“不使用代理”。测试前应记录原有代理设置，测试后恢复。
+若相关宿主命令不可用、运行失败或代理无法正常工作，请先在桌面系统设置中关闭代理。GNOME 可执行 `gsettings set org.gnome.system.proxy mode 'none'`；KDE 可在系统设置的“代理”页面选择“不使用代理”。测试前应记录原有代理设置，测试后恢复。
 
 ## 更新和限制
 
