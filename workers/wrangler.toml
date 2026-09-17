@@ -1,7 +1,6 @@
 name = "my-flathub-pr-preview"
 main = "preview-repo.ts"
 compatibility_date = "2026-09-16"
-workers_dev = false
 
 [[routes]]
 pattern = "preview.flatpak.anlor.top"

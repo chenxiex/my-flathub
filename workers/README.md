@@ -7,7 +7,7 @@
 ## 部署与运维
 
 1. 确认 `<预览域名>` 所属的 Cloudflare zone 已加入当前账号，并且该主机名没有已有的 CNAME 记录。预览入口应使用独立子域名，不要与正式仓库共用主机名。
-2. 编辑 [wrangler.toml](wrangler.toml)，将 `workers_dev` 保持为 `false`，并设置：
+2. 编辑 [wrangler.toml](wrangler.toml)并设置：
 
    ```toml
    [[routes]]
