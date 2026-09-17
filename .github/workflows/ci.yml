@@ -15,9 +15,6 @@ jobs:
             - name: 检出仓库
               uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
-            - name: 安装 uv
-              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
-
             - name: 安装 Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # 固定为 v4.4.0 对应提交
               with:
@@ -35,6 +32,19 @@ jobs:
                   npm run typecheck --prefix workers
                   npm test --prefix workers
                   npm run build --prefix workers
+
+    python:
+        name: 检查 Python 代码质量
+        runs-on: ubuntu-24.04
+        steps:
+            - name: 检出仓库
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
+            - name: 检查代码风格、类型并运行测试
+              run: |
                   uv run --locked ruff check
                   uv run --locked ruff format --check
                   uv run --locked ty check
