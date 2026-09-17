@@ -18,6 +18,22 @@ flatpak install anlor org.example.FlatpakHello
 
 ## 运维
 
+PR 成功构建后的临时测试仓库部署与清理说明见 [PR 测试仓库入口](workers/README.md)。
+
+### 开发命令
+
+仓库维护逻辑由根目录的 uv Python 项目提供，依赖版本固定在 `uv.lock`。首次或依赖变更后执行 `uv sync`；日常执行使用锁定环境：
+
+```console
+uv run --locked my-flathub validate-manifests
+uv run --locked ruff check
+uv run --locked ruff format --check
+uv run --locked ty check
+uv run --locked pytest
+```
+
+`workers/` 保持独立的 npm 与 TypeScript 工具链，命令见 [workers/README.md](workers/README.md)。
+
 ### GPG 发布密钥
 
 建议生成只用于本源、没有口令的独立密钥。密钥泄露时应立即停止发布、轮换密钥并向所有用户重新分发 `.flatpakrepo`；已安装 remote 的信任密钥不会自动替换。
@@ -72,7 +88,7 @@ Flatpak CLI 不需要浏览器 CORS。发布脚本使用 R2 S3 endpoint `https:/
 
 ### 发布过程
 
-PR 只构建和验证，不接触发布 Secrets。合并到 `main` 或手动运行“发布 Flatpak 仓库”工作流后，工作流会：
+PR CI 构建、验证并用一次性密钥签署临时测试仓库，不接触正式发布 Secrets；预览发布由独立的工作流处理。合并到 `main` 或手动运行“发布 Flatpak 仓库”工作流后，正式发布工作流会：
 
 1. 从 R2 恢复当前 repo，首次发布则初始化 `archive-z2` repo。
 2. 构建并签署所有应用，生成 AppStream、签名 summary 和 static deltas。

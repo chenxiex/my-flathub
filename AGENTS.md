@@ -17,7 +17,7 @@
 
 ## 仓库结构
 
-每个应用独占一个目录，目录名、manifest 文件名和 `app-id` 必须一致：
+每个应用独占一个目录，目录名、manifest 文件名和 `app-id` 必须一致。仓库维护逻辑位于 Python 包，应用包内运行时脚本仍与应用资源放在一起：
 
 ```text
 packages/
@@ -25,16 +25,12 @@ packages/
     org.example.FlatpakHello.yaml
     org.example.FlatpakHello.metainfo.xml
     flatpak-hello.sh
-scripts/
-  build-repo.sh
-  discover-manifests.sh
-  finalize-repo.sh
-  generate-flatpakrepo.sh
-  r2-repo.sh
+src/my_flathub/
+  cli.py
+  core.py
+  preview.py
 tests/
-  probe-public-repo.sh
-  validate-manifests.sh
-  verify-repo.sh
+  test_*.py
 ```
 
 补丁、图标、Desktop 文件和本地辅助源码也应放入对应的应用目录。
@@ -50,14 +46,23 @@ tests/
 
 ## 本地构建
 
-系统已安装 `flatpak-builder`，或已通过 Flatpak 安装 `org.flatpak.Builder` 时运行：
+使用 `uv` 管理 Python 3.12 环境和锁定依赖。所有仓库维护命令都通过统一 CLI 运行；系统已安装 `flatpak-builder`，或已通过 Flatpak 安装 `org.flatpak.Builder` 时运行：
 
 ```console
-bash scripts/build-repo.sh
-bash tests/verify-repo.sh
+uv run --locked my-flathub build-repo
+uv run --locked my-flathub verify-repo
 ```
 
-脚本优先使用原生 `flatpak-builder`；找不到时会自动通过 `flatpak run org.flatpak.Builder` 调用 Flatpak 版本。
+CLI 优先使用原生 `flatpak-builder`；找不到时会自动通过 `flatpak run org.flatpak.Builder` 调用 Flatpak 版本。
+
+Python 代码、测试和配置变更还必须运行：
+
+```console
+uv run --locked ruff check
+uv run --locked ruff format --check
+uv run --locked ty check
+uv run --locked pytest
+```
 
 也可以使用 Flathub 的 Builder Flatpak 构建单个应用：
 
@@ -80,7 +85,7 @@ CI 使用固定 digest 的 `ghcr.io/flathub-infra/flatpak-github-actions:freedes
 ## 构建与验证
 
 - 提交前按变更范围运行以下验证；一项变更涉及多个范围时，运行其全部命令。
-- 修改 manifest 或打包资源后，运行 `bash tests/validate-manifests.sh`。
-- 修改构建、仓库生成或发布逻辑后，运行 `bash scripts/build-repo.sh` 和 `bash tests/verify-repo.sh`。
+- 修改 manifest 或打包资源后，运行 `uv run --locked my-flathub validate-manifests`。
+- 修改 Python 构建、仓库生成或发布逻辑后，运行 `uv run --locked my-flathub build-repo` 和 `uv run --locked my-flathub verify-repo`，以及本节列出的 Python 检查。
 - 修改 GitHub Actions 工作流后，使用 `actionlint` 验证工作流语法。
 - 不得因为沙箱限制而跳过必要的测试、冒烟测试、设备探测、依赖安装或其他验证。

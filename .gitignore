@@ -1,4 +1,9 @@
 /.flatpak-builder/
+/.venv/
 /build/
 /repo/
 /public-key.gpg
+/preview.json
+/workers/node_modules/
+/workers/worker-configuration.d.ts
+/workers/dist/

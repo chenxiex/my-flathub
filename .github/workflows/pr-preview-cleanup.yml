@@ -1,0 +1,38 @@
+name: 清理 PR 测试仓库
+
+on:
+    pull_request_target:
+        types:
+            - closed
+    schedule:
+        - cron: '43 4 * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    cleanup:
+        name: 删除关闭或过期的测试仓库
+        runs-on: ubuntu-24.04
+        steps:
+            - name: 检出默认分支的清理代码
+              uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
+              with:
+                  ref: main
+                  persist-credentials: false
+
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
+            - name: 清理 Release 和 tag
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+              shell: bash
+              run: |
+                  if [[ -n "$PR_NUMBER" ]]; then
+                      uv run --locked my-flathub preview cleanup --pr "$PR_NUMBER"
+                  else
+                      uv run --locked my-flathub preview cleanup
+                  fi
