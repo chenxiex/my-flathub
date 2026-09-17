@@ -1,0 +1,33 @@
+[project]
+name = "my-flathub"
+version = "0.1.0"
+description = "My Flathub 仓库维护工具"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1,<9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "ruff>=0.12,<1",
+    "ty>=0.0.1",
+]
+
+[project.scripts]
+my-flathub = "my_flathub.cli:cli"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

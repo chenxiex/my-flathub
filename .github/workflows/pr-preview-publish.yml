@@ -27,8 +27,11 @@ jobs:
                   ref: main
                   persist-credentials: false
 
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
             - name: 发布仓库并更新 PR 安装说明
               env:
                   GH_TOKEN: ${{ github.token }}
                   PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_BASE_URL }}
-              run: python3 scripts/pr-preview-release.py publish
+              run: uv run --locked my-flathub preview publish

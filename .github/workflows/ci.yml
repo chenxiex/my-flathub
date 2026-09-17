@@ -15,6 +15,9 @@ jobs:
             - name: 检出仓库
               uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
             - name: 安装 Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # 固定为 v4.4.0 对应提交
               with:
@@ -32,7 +35,10 @@ jobs:
                   npm run typecheck --prefix workers
                   npm test --prefix workers
                   npm run build --prefix workers
-                  python3 -m unittest discover -s tests -p 'test_*.py' -v
+                  uv run --locked ruff check
+                  uv run --locked ruff format --check
+                  uv run --locked ty check
+                  uv run --locked pytest
 
     build:
         name: 构建并验证 x86_64
@@ -47,6 +53,9 @@ jobs:
             - name: 检出仓库
               uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
             - name: 缓存 Flatpak Builder 状态
               uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # 固定为 v4 对应提交
               with:
@@ -56,10 +65,10 @@ jobs:
                       flatpak-builder-25.08-x86_64-
 
             - name: 构建全部软件包
-              run: bash scripts/build-repo.sh
+              run: uv run --locked my-flathub build-repo
 
             - name: 验证仓库并对示例执行冒烟测试
-              run: bash tests/verify-repo.sh
+              run: uv run --locked my-flathub verify-repo
 
             - name: 签署 PR 预览仓库
               if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
@@ -68,13 +77,13 @@ jobs:
                   PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_BASE_URL }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
                   PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-              run: bash scripts/prepare-preview-repo.sh
+              run: uv run --locked my-flathub prepare-preview-repo
 
             - name: 验证已签名的预览仓库
               if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''
               env:
                   FLATPAK_GPG_PUBLIC_KEY_FILE: ${{ runner.temp }}/preview-public.gpg
-              run: bash tests/verify-repo.sh
+              run: uv run --locked my-flathub verify-repo
 
             - name: 暂存预览仓库供隔离发布流程使用
               if: github.event_name == 'pull_request' && vars.PR_PREVIEW_BASE_URL != ''

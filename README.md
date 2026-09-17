@@ -20,6 +20,20 @@ flatpak install anlor org.example.FlatpakHello
 
 PR 成功构建后的临时测试仓库部署与清理说明见 [PR 测试仓库入口](workers/README.md)。
 
+### 开发命令
+
+仓库维护逻辑由根目录的 uv Python 项目提供，依赖版本固定在 `uv.lock`。首次或依赖变更后执行 `uv sync`；日常执行使用锁定环境：
+
+```console
+uv run --locked my-flathub validate-manifests
+uv run --locked ruff check
+uv run --locked ruff format --check
+uv run --locked ty check
+uv run --locked pytest
+```
+
+`workers/` 保持独立的 npm 与 TypeScript 工具链，命令见 [workers/README.md](workers/README.md)。
+
 ### GPG 发布密钥
 
 建议生成只用于本源、没有口令的独立密钥。密钥泄露时应立即停止发布、轮换密钥并向所有用户重新分发 `.flatpakrepo`；已安装 remote 的信任密钥不会自动替换。

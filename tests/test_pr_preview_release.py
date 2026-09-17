@@ -1,16 +1,11 @@
 """验证来自无特权 PR 工作流的仓库产物不能越界发布。"""
 
-import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "pr-preview-release.py"
-SPEC = importlib.util.spec_from_file_location("pr_preview_release", SCRIPT)
-MODULE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(MODULE)
+from my_flathub import preview as MODULE
 
 
 class ValidateRepoTests(unittest.TestCase):

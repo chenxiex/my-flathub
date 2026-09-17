@@ -7,13 +7,12 @@ import datetime as dt
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import stat
 import subprocess
 import sys
 import tempfile
-
+from pathlib import Path
 
 TAG_PATTERN = re.compile(r"^pr-preview-([1-9][0-9]*)-([1-9][0-9]*)-([1-9][0-9]*)$")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -70,7 +69,7 @@ def delete_artifact(repo, run_id, name):
 
 
 def cleanup(repo, number=None, keep=None):
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.now(dt.UTC)
     for release in releases(repo):
         tag = release["tag_name"]
         match = TAG_PATTERN.fullmatch(tag)
@@ -90,9 +89,13 @@ def cleanup(repo, number=None, keep=None):
 def newer_release_exists(repo, number, run_id, attempt):
     for release in releases(repo):
         match = TAG_PATTERN.fullmatch(release["tag_name"])
-        if match and not release["draft"] and int(match.group(1)) == number:
-            if (int(match.group(2)), int(match.group(3))) >= (run_id, attempt):
-                return True
+        if (
+            match
+            and not release["draft"]
+            and int(match.group(1)) == number
+            and (int(match.group(2)), int(match.group(3))) >= (run_id, attempt)
+        ):
+            return True
     return False
 
 
@@ -105,7 +108,9 @@ def validate_repo(root, expected_url):
         if stat.S_ISLNK(mode) or not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
             raise ValueError(f"产物含有不允许的文件类型：{path}")
         relative = path.relative_to(root)
-        if not all(PATH_PART_PATTERN.fullmatch(part) and part not in (".", "..") for part in relative.parts):
+        if not all(
+            PATH_PART_PATTERN.fullmatch(part) and part not in (".", "..") for part in relative.parts
+        ):
             raise ValueError(f"产物含有不允许的路径：{relative}")
         if stat.S_ISREG(mode):
             if path.stat().st_size >= MAX_ASSET_BYTES:
@@ -145,7 +150,8 @@ def comment_on_pr(repo, number, body):
         page += 1
     own = next(
         (
-            item for item in reversed(comments)
+            item
+            for item in reversed(comments)
             if COMMENT_MARKER in item["body"] and item["user"]["login"] == "github-actions[bot]"
         ),
         None,
@@ -169,8 +175,17 @@ def publish(repo, base_url, event_file):
 
     with tempfile.TemporaryDirectory(prefix="pr-preview-") as temp:
         temp_path = Path(temp)
-        gh("run", "download", run_id, "--name", artifact_name,
-           "--dir", temp_path / "artifact", "--repo", repo)
+        gh(
+            "run",
+            "download",
+            run_id,
+            "--name",
+            artifact_name,
+            "--dir",
+            temp_path / "artifact",
+            "--repo",
+            repo,
+        )
         artifact = temp_path / "artifact"
         metadata_path = artifact / "preview.json"
         if artifact.is_symlink() or not stat.S_ISREG(metadata_path.lstat().st_mode):
@@ -178,7 +193,12 @@ def publish(repo, base_url, event_file):
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         number = metadata["pr_number"]
         head_sha = metadata["head_sha"]
-        if not isinstance(number, int) or number <= 0 or not isinstance(head_sha, str) or not SHA_PATTERN.fullmatch(head_sha):
+        if (
+            not isinstance(number, int)
+            or number <= 0
+            or not isinstance(head_sha, str)
+            or not SHA_PATTERN.fullmatch(head_sha)
+        ):
             raise ValueError("构建产物的 PR 元数据无效")
         if metadata["run_id"] != run_id or metadata["run_attempt"] != attempt:
             raise ValueError("构建产物的运行 ID 不符")
@@ -210,14 +230,26 @@ def publish(repo, base_url, event_file):
             os.link(path, staged / asset_name)
 
         print(f"上传 {len(files)} 个仓库文件到 {tag}", flush=True)
-        gh("release", "create", tag, "--draft", "--prerelease", "--target", "main",
-           "--title", f"PR #{number} 测试构建 {preview_id}",
-           "--notes", "临时测试仓库；请使用 PR 中的安装说明。", "--repo", repo)
+        gh(
+            "release",
+            "create",
+            tag,
+            "--draft",
+            "--prerelease",
+            "--target",
+            "main",
+            "--title",
+            f"PR #{number} 测试构建 {preview_id}",
+            "--notes",
+            "临时测试仓库；请使用 PR 中的安装说明。",
+            "--repo",
+            repo,
+        )
         published = False
         try:
             asset_paths = sorted(staged.iterdir())
             for start in range(0, len(asset_paths), 20):
-                gh("release", "upload", tag, "--repo", repo, *asset_paths[start:start + 20])
+                gh("release", "upload", tag, "--repo", repo, *asset_paths[start : start + 20])
 
             current = gh_json(f"repos/{repo}/pulls/{number}")
             if current["state"] != "open" or current["head"]["sha"] != head_sha:
@@ -257,21 +289,25 @@ def publish(repo, base_url, event_file):
         cleanup(repo, number=number, keep=tag)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("publish", "cleanup"))
-    parser.add_argument("--pr", type=int)
-    args = parser.parse_args()
+def run_cli(operation: str, number: int | None = None) -> None:
     repo = os.environ["GITHUB_REPOSITORY"]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("GITHUB_REPOSITORY 无效")
-    if args.operation == "cleanup":
-        cleanup(repo, number=args.pr)
+    if operation == "cleanup":
+        cleanup(repo, number=number)
         return
     base_url = os.environ["PR_PREVIEW_BASE_URL"]
     if not re.fullmatch(r"https://[^/]+/", base_url):
         raise ValueError("PR_PREVIEW_BASE_URL 必须是 HTTPS Worker 根地址")
     publish(repo, base_url, Path(os.environ["GITHUB_EVENT_PATH"]))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("operation", choices=("publish", "cleanup"))
+    parser.add_argument("--pr", type=int)
+    args = parser.parse_args()
+    run_cli(args.operation, args.pr)
 
 
 if __name__ == "__main__":

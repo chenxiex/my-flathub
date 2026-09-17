@@ -33,6 +33,9 @@ jobs:
             - name: 检出仓库
               uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # 固定为 v5 对应提交
 
+            - name: 安装 uv
+              uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # 固定为 v10.1.0
+
             - name: 安装发布工具
               shell: bash
               run: |
@@ -80,24 +83,24 @@ jobs:
               env:
                   R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
                   R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-              run: bash scripts/r2-repo.sh pull
+              run: uv run --locked my-flathub r2 pull
 
             - name: 构建并签名全部软件包
-              run: bash scripts/build-repo.sh
+              run: uv run --locked my-flathub build-repo
 
             - name: 生成已签名的仓库元数据
               run: |
-                  bash scripts/finalize-repo.sh
-                  bash scripts/generate-flatpakrepo.sh
+                  uv run --locked my-flathub finalize-repo
+                  uv run --locked my-flathub generate-flatpakrepo
 
             - name: 验证已签名的仓库
-              run: bash tests/verify-repo.sh
+              run: uv run --locked my-flathub verify-repo
 
             - name: 将仓库发布到 R2
               env:
                   R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
                   R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-              run: bash scripts/r2-repo.sh push
+              run: uv run --locked my-flathub r2 push
 
             - name: 探测公开仓库
-              run: bash tests/probe-public-repo.sh
+              run: uv run --locked my-flathub probe-public-repo

@@ -1,4 +1,5 @@
 /.flatpak-builder/
+/.venv/
 /build/
 /repo/
 /public-key.gpg
