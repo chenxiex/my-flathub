@@ -12,12 +12,65 @@ import tempfile
 import xml.etree.ElementTree as element_tree
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from ipaddress import IPv6Address
 from pathlib import Path
+from urllib.parse import urlsplit
 
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 GIT_COMMIT_PATTERN = re.compile(r"^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$")
-HTTPS_ROOT_PATTERN = re.compile(r"https://[^/]+/")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+
+
+def valid_url_host(host: str | None) -> bool:
+    """检查 IP 或 DNS 主机语法，不依赖网络解析。"""
+    if not host:
+        return False
+    try:
+        if ":" in host:
+            IPv6Address(host)
+            return True
+        ascii_host = host.encode("idna").decode("ascii").removesuffix(".")
+    except (ValueError, UnicodeError):
+        return False
+    return len(ascii_host) <= 253 and all(
+        re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+        for label in ascii_host.split(".")
+    )
+
+
+def validate_https_url(url: str, *, source: str, root_only: bool = False) -> None:
+    """区分入口根地址与允许子路径的仓库地址，并保留错误来源。"""
+    reason = ""
+    if not url:
+        reason = "地址不能为空"
+    elif any(
+        character.isspace() or ord(character) < 32 or ord(character) == 127 for character in url
+    ):
+        reason = "地址不能包含空白或控制字符"
+    else:
+        try:
+            parsed = urlsplit(url)
+            port = parsed.port
+            if parsed.scheme != "https":
+                reason = "必须使用 HTTPS"
+            elif not valid_url_host(parsed.hostname) or "\\" in parsed.netloc:
+                reason = "必须包含有效主机"
+            elif parsed.netloc.endswith(":") or port == 0:
+                reason = "端口无效"
+            elif parsed.username is not None or parsed.password is not None:
+                reason = "地址不能包含用户凭据"
+            elif "?" in url or "#" in url:
+                reason = "地址不能包含查询参数或片段"
+            elif not parsed.path.endswith("/"):
+                reason = "地址必须以 / 结尾"
+                if not root_only:
+                    reason += "；仓库地址允许包含子路径"
+            elif root_only and parsed.path != "/":
+                reason = "预览入口必须是 HTTPS 根地址，不能包含子路径"
+        except ValueError:
+            reason = "主机或端口无效"
+    if reason:
+        raise ValueError(f"{source} 无效：{reason}。")
 
 
 class CommandError(RuntimeError):
@@ -314,18 +367,27 @@ def finalize_repository() -> None:
     )
 
 
-def generate_flatpakrepo() -> None:
-    key_id = os.environ.get("GPG_KEY_ID")
-    repo_url = os.environ.get("FLATPAK_REPO_URL", "")
-    repo_title = os.environ.get("FLATPAK_REPO_TITLE", "My Flathub")
+def generate_flatpakrepo(
+    *,
+    env: dict[str, str] | None = None,
+    url_source: str = "环境变量 FLATPAK_REPO_URL",
+) -> None:
+    environment = os.environ if env is None else env
+    key_id = environment.get("GPG_KEY_ID")
+    repo_url = environment.get("FLATPAK_REPO_URL", "")
+    repo_title = environment.get("FLATPAK_REPO_TITLE", "My Flathub")
     if not key_id:
         raise ValueError("必须设置 GPG_KEY_ID")
-    if not HTTPS_ROOT_PATTERN.fullmatch(repo_url):
-        raise ValueError("FLATPAK_REPO_URL 必须是以“/”结尾的 HTTPS URL")
-    exported = run_bytes(["gpg", "--batch", "--export", key_id]).stdout
+    validate_https_url(repo_url, source=url_source)
+    try:
+        exported = run_bytes(["gpg", "--batch", "--export", key_id], env=env).stdout
+    except CommandError as error:
+        raise CommandError(
+            f"生成 repo.flatpakrepo 时导出密钥 {key_id} 的公钥失败：{error}"
+        ) from error
     if not exported:
-        raise ValueError(f"无法导出 {key_id} 对应的公钥")
-    repo_dir = setting_path("REPO_DIR", "repo")
+        raise ValueError(f"生成 repo.flatpakrepo 时无法导出密钥 {key_id} 对应的公钥")
+    repo_dir = Path(environment.get("REPO_DIR", "repo"))
     repo_dir.mkdir(parents=True, exist_ok=True)
     (repo_dir / "repo.flatpakrepo").write_text(
         "[Flatpak Repo]\n"
@@ -344,12 +406,14 @@ def prepare_preview_repository(repository_root: Path) -> None:
     head_sha = os.environ.get("PR_HEAD_SHA", "")
     run_id = os.environ.get("GITHUB_RUN_ID", "")
     run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
-    if not HTTPS_ROOT_PATTERN.fullmatch(base_url):
-        raise ValueError("PR_PREVIEW_BASE_URL 必须是 HTTPS Worker 根地址，并以 / 结尾")
+    validate_https_url(base_url, source="环境变量 PR_PREVIEW_BASE_URL", root_only=True)
     if not all(
         value.isdecimal() and int(value) > 0 for value in (pr_number, run_id, run_attempt)
     ) or not SHA_PATTERN.fullmatch(head_sha):
         raise ValueError("PR 编号、运行 ID、重试次数或提交 SHA 无效")
+    preview_url = f"{base_url}pr/{pr_number}/{run_id}-{run_attempt}/"
+    url_source = "内部生成的 PR 预览仓库 URL（prepare-preview-repo）"
+    validate_https_url(preview_url, source=url_source)
     repo_dir = setting_path("REPO_DIR", "repo")
     require_repo(repo_dir)
     runner_temp = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
@@ -412,22 +476,21 @@ def prepare_preview_repository(repository_root: Path) -> None:
             ],
             env=key_env,
         )
-        replacement = {
+        descriptor_env = {
+            **key_env,
             "GPG_KEY_ID": key_id,
-            "FLATPAK_REPO_URL": f"{base_url}pr/{pr_number}/{run_id}-{run_attempt}/",
+            "FLATPAK_REPO_URL": preview_url,
             "FLATPAK_REPO_TITLE": f"My Flathub PR #{pr_number} 测试仓库",
         }
-        original = {name: os.environ.get(name) for name in replacement}
+        generate_flatpakrepo(env=descriptor_env, url_source=url_source)
         try:
-            os.environ.update(replacement)
-            generate_flatpakrepo()
-        finally:
-            for name, value in original.items():
-                if value is None:
-                    os.environ.pop(name, None)
-                else:
-                    os.environ[name] = value
-        public_key = run_bytes(["gpg", "--batch", "--export", key_id], env=key_env).stdout
+            public_key = run_bytes(["gpg", "--batch", "--export", key_id], env=key_env).stdout
+        except CommandError as error:
+            raise CommandError(
+                f"prepare-preview-repo 验证阶段导出密钥 {key_id} 的公钥失败：{error}"
+            ) from error
+        if not public_key:
+            raise ValueError(f"prepare-preview-repo 验证阶段无法导出密钥 {key_id} 的公钥")
         (runner_temp / "preview-public.gpg").write_bytes(public_key)
     (repository_root / "preview.json").write_text(
         json.dumps(
@@ -595,8 +658,7 @@ def verify_repository(repository_root: Path) -> None:
 def probe_public_repository() -> None:
     repo_url = os.environ.get("FLATPAK_REPO_URL", "")
     remote_name = os.environ.get("FLATPAK_REMOTE_NAME", "my-flathub")
-    if not HTTPS_ROOT_PATTERN.fullmatch(repo_url):
-        raise ValueError("FLATPAK_REPO_URL 必须是以“/”结尾的 HTTPS URL")
+    validate_https_url(repo_url, source="环境变量 FLATPAK_REPO_URL")
     for filename in ("repo.flatpakrepo", "summary"):
         run(
             [
