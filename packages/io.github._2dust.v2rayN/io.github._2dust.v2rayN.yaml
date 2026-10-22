@@ -36,8 +36,8 @@ modules:
       - install -m644 /app/lib/v2rayN/v2rayN.png /app/share/icons/hicolor/256x256/apps/io.github._2dust.v2rayN.png
     sources:
       - type: archive
-        url: https://github.com/2dust/v2rayN/releases/download/7.25.4/v2rayN-linux-64.zip
-        sha256: bf1d552e7c6711e4967d570b8be7095f9519358e3ea4d7c3a18a81bda386af48
+        url: https://github.com/2dust/v2rayN/releases/download/7.25.6/v2rayN-linux-64.zip
+        sha256: 7f1b35e01ea59fd418fedb11b81ca1346bdcb3aa8121b628561f9d59c6f3a205
         x-checker-data:
           type: json
           url: https://api.github.com/repos/2dust/v2rayN/releases/latest
